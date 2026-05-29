@@ -1,0 +1,14 @@
+{
+  "name": "Diagnosticando su empresa 030",
+  "description": "Plataforma integral para diagnósticos de seguridad y salud en el trabajo conforme a la NOM-030-STPS-2009.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API",
+    "offline_access",
+    "pwa",
+    "document_generation"
+  ]
+}

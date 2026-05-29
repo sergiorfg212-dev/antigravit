@@ -1,0 +1,118 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isResourceOwner() {
+      return isSignedIn() && resource != null && resource.data.userId == request.auth.uid;
+    }
+
+    function isIncomingOwner() {
+      return isSignedIn() && request.resource != null && request.resource.data.userId == request.auth.uid;
+    }
+
+    function isMasterAdmin() {
+      return isSignedIn() 
+        && request.auth.token.email_verified == true 
+        && request.auth.token.email.lower() == 'sergio.rfg212@gmail.com';
+    }
+
+    match /users/{userId} {
+      allow read, write: if isOwner(userId) || isMasterAdmin();
+    }
+
+    match /companies/{companyId} {
+      allow read: if isSignedIn() && (isResourceOwner() || isMasterAdmin());
+      allow create: if isSignedIn() && (isIncomingOwner() || isMasterAdmin());
+      allow update: if isSignedIn() && ((isResourceOwner() && isIncomingOwner()) || isMasterAdmin());
+      allow delete: if isSignedIn() && (isResourceOwner() || isMasterAdmin());
+    }
+
+    match /diagnoses/{diagnosisId} {
+      allow read: if isSignedIn() && (isResourceOwner() || isMasterAdmin());
+      allow create: if isSignedIn() && (isIncomingOwner() || isMasterAdmin());
+      allow update: if isSignedIn() && ((isResourceOwner() && isIncomingOwner()) || isMasterAdmin());
+      allow delete: if isSignedIn() && (isResourceOwner() || isMasterAdmin());
+    }
+
+    match /findings/{findingId} {
+      allow read: if isSignedIn() && (isResourceOwner() || isMasterAdmin());
+      allow create: if isSignedIn() && (isIncomingOwner() || isMasterAdmin());
+      allow update: if isSignedIn() && ((isResourceOwner() && isIncomingOwner()) || isMasterAdmin());
+      allow delete: if isSignedIn() && (isResourceOwner() || isMasterAdmin());
+    }
+
+    match /riskAssessments/{assessmentId} {
+      allow read: if isSignedIn() && (isResourceOwner() || isMasterAdmin());
+      allow create: if isSignedIn() && (isIncomingOwner() || isMasterAdmin());
+      allow update: if isSignedIn() && ((isResourceOwner() && isIncomingOwner()) || isMasterAdmin());
+      allow delete: if isSignedIn() && (isResourceOwner() || isMasterAdmin());
+    }
+
+    match /safetyActions/{actionId} {
+      allow read: if isSignedIn() && (isResourceOwner() || isMasterAdmin());
+      allow create: if isSignedIn() && (isIncomingOwner() || isMasterAdmin());
+      allow update: if isSignedIn() && ((isResourceOwner() && isIncomingOwner()) || isMasterAdmin());
+      allow delete: if isSignedIn() && (isResourceOwner() || isMasterAdmin());
+    }
+
+    match /checklistItems/{itemId} {
+      allow read: if isSignedIn() && (isResourceOwner() || isMasterAdmin());
+      allow create: if isSignedIn() && (isIncomingOwner() || isMasterAdmin());
+      allow update: if isSignedIn() && ((isResourceOwner() && isIncomingOwner()) || isMasterAdmin());
+      allow delete: if isSignedIn() && (isResourceOwner() || isMasterAdmin());
+    }
+
+    match /legalMatrix/{matrixId} {
+      allow read: if isSignedIn() && (isResourceOwner() || isMasterAdmin());
+      allow create: if isSignedIn() && (isIncomingOwner() || isMasterAdmin());
+      allow update: if isSignedIn() && ((isResourceOwner() && isIncomingOwner()) || isMasterAdmin());
+      allow delete: if isSignedIn() && (isResourceOwner() || isMasterAdmin());
+    }
+
+    match /safetyProgram/{programId} {
+      allow read: if isSignedIn() && (isResourceOwner() || isMasterAdmin());
+      allow create: if isSignedIn() && (isIncomingOwner() || isMasterAdmin());
+      allow update: if isSignedIn() && ((isResourceOwner() && isIncomingOwner()) || isMasterAdmin());
+      allow delete: if isSignedIn() && (isResourceOwner() || isMasterAdmin());
+    }
+
+    match /accidentRecords/{recordId} {
+      allow read: if isSignedIn() && (isResourceOwner() || isMasterAdmin());
+      allow create: if isSignedIn() && (isIncomingOwner() || isMasterAdmin());
+      allow update: if isSignedIn() && ((isResourceOwner() && isIncomingOwner()) || isMasterAdmin());
+      allow delete: if isSignedIn() && (isResourceOwner() || isMasterAdmin());
+    }
+
+    match /accidentEvents/{eventId} {
+      allow read: if isSignedIn() && (isResourceOwner() || isMasterAdmin());
+      allow create: if isSignedIn() && (isIncomingOwner() || isMasterAdmin());
+      allow update: if isSignedIn() && ((isResourceOwner() && isIncomingOwner()) || isMasterAdmin());
+      allow delete: if isSignedIn() && (isResourceOwner() || isMasterAdmin());
+    }
+
+    match /surroundingHazards/{hazardId} {
+      allow read: if isSignedIn() && (isResourceOwner() || isMasterAdmin());
+      allow create: if isSignedIn() && (isIncomingOwner() || isMasterAdmin());
+      allow update: if isSignedIn() && ((isResourceOwner() && isIncomingOwner()) || isMasterAdmin());
+      allow delete: if isSignedIn() && (isResourceOwner() || isMasterAdmin());
+    }
+
+    match /evidences/{evidenceId} {
+      allow read: if isSignedIn() && (isResourceOwner() || isMasterAdmin());
+      allow create: if isSignedIn() && (isIncomingOwner() || isMasterAdmin());
+      allow update: if isSignedIn() && ((isResourceOwner() && isIncomingOwner()) || isMasterAdmin());
+      allow delete: if isSignedIn() && (isResourceOwner() || isMasterAdmin());
+    }
+  }
+}

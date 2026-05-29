@@ -1,0 +1,236 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with role details",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase UID of the user" },
+        "name": { "type": "string", "description": "Display name" },
+        "email": { "type": "string", "description": "Email address" },
+        "role": { "type": "string", "enum": ["admin", "user"], "description": "Access control role" },
+        "isBlocked": { "type": "boolean", "description": "Blocked status" },
+        "settings": {
+          "type": "object",
+          "description": "User's synchronized app settings, like last selected company and active navigation tab",
+          "properties": {
+            "currentCompanyId": { "type": "integer" },
+            "activeTab": { "type": "string" }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email"]
+    },
+    "Company": {
+      "title": "Company",
+      "description": "An industrial facility or workplace evaluated",
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer" },
+        "name": { "type": "string" },
+        "rfc": { "type": "string" },
+        "address": { "type": "string" },
+        "activity": { "type": "string" },
+        "workerCount": { "type": "integer" },
+        "riskLevel": { "type": "integer" },
+        "userId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name"]
+    },
+    "Diagnosis": {
+      "title": "Diagnosis",
+      "description": "NOM030 diagnosis log identifier",
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer" },
+        "companyId": { "type": "integer" },
+        "title": { "type": "string" },
+        "type": { "type": "string" },
+        "status": { "type": "string" },
+        "userId": { "type": "string" }
+      },
+      "required": ["companyId", "title"]
+    },
+    "Finding": {
+      "title": "Finding",
+      "description": "Audit findings and unsafe conditions",
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer" },
+        "companyId": { "type": "integer" },
+        "diagnosisId": { "type": "integer" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "severity": { "type": "string" },
+        "status": { "type": "string" },
+        "userId": { "type": "string" }
+      },
+      "required": ["companyId", "diagnosisId", "title"]
+    },
+    "RiskAssessment": {
+      "title": "RiskAssessment",
+      "description": "Finer or Matrix risk measurement",
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer" },
+        "companyId": { "type": "integer" },
+        "diagnosisId": { "type": "integer" },
+        "userId": { "type": "string" }
+      },
+      "required": ["companyId"]
+    },
+    "SafetyAction": {
+      "title": "SafetyAction",
+      "description": "Safety plans associated with findings",
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer" },
+        "companyId": { "type": "integer" },
+        "userId": { "type": "string" }
+      },
+      "required": ["companyId"]
+    },
+    "ChecklistItem": {
+      "title": "ChecklistItem",
+      "description": "Norm requirement verification log",
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer" },
+        "companyId": { "type": "integer" },
+        "diagnosisId": { "type": "integer" },
+        "nomCode": { "type": "string" },
+        "userId": { "type": "string" }
+      },
+      "required": ["companyId", "diagnosisId"]
+    },
+    "LegalMatrix": {
+      "title": "LegalMatrix",
+      "description": "Legal requirement line item",
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer" },
+        "companyId": { "type": "integer" },
+        "authority": { "type": "string" },
+        "userId": { "type": "string" }
+      },
+      "required": ["companyId", "authority"]
+    },
+    "SafetyProgram": {
+      "title": "SafetyProgram",
+      "description": "STPS action items list",
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer" },
+        "companyId": { "type": "integer" },
+        "nomSection": { "type": "string" },
+        "userId": { "type": "string" }
+      },
+      "required": ["companyId"]
+    },
+    "AccidentRecord": {
+      "title": "AccidentRecord",
+      "description": "Incident aggregations by month",
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer" },
+        "companyId": { "type": "integer" },
+        "year": { "type": "integer" },
+        "userId": { "type": "string" }
+      },
+      "required": ["companyId", "year"]
+    },
+    "AccidentEvent": {
+      "title": "AccidentEvent",
+      "description": "Individual medical incident record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer" },
+        "companyId": { "type": "integer" },
+        "date": { "type": "string" },
+        "userId": { "type": "string" }
+      },
+      "required": ["companyId"]
+    },
+    "SurroundingHazard": {
+      "title": "SurroundingHazard",
+      "description": "Natural or civil risk zones nearby",
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer" },
+        "companyId": { "type": "integer" },
+        "hazardType": { "type": "string" },
+        "userId": { "type": "string" }
+      },
+      "required": ["companyId"]
+    },
+    "EvidenceLog": {
+      "title": "EvidenceLog",
+      "description": "Evidence upload traces",
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer" },
+        "companyId": { "type": "integer" },
+        "entryType": { "type": "string" },
+        "userId": { "type": "string" }
+      },
+      "required": ["companyId"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile with role access permissions"
+    },
+    "/companies/{companyId}": {
+      "schema": "Company",
+      "description": "Vetted companies assigned to assessor"
+    },
+    "/diagnoses/{diagnosisId}": {
+      "schema": "Diagnosis",
+      "description": "Workplace safety diagnostics logs"
+    },
+    "/findings/{findingId}": {
+      "schema": "Finding",
+      "description": "Regulatory inspection findings logs"
+    },
+    "/riskAssessments/{assessmentId}": {
+      "schema": "RiskAssessment",
+      "description": "Workplace physical/chemical risk evaluations"
+    },
+    "/safetyActions/{actionId}": {
+      "schema": "SafetyAction",
+      "description": "Corrective/preventive compliance action timelines"
+    },
+    "/checklistItems/{itemId}": {
+      "schema": "ChecklistItem",
+      "description": "Norm verification checklist status"
+    },
+    "/legalMatrix/{matrixId}": {
+      "schema": "LegalMatrix",
+      "description": "Legal norms matrix"
+    },
+    "/safetyProgram/{programId}": {
+      "schema": "SafetyProgram",
+      "description": "Comprehensive safety program records"
+    },
+    "/accidentRecords/{recordId}": {
+      "schema": "AccidentRecord",
+      "description": "Aggregated numbers of monthly industrial accidents"
+    },
+    "/accidentEvents/{eventId}": {
+      "schema": "AccidentEvent",
+      "description": "Detailed logs of medical hazards and incidents"
+    },
+    "/surroundingHazards/{hazardId}": {
+      "schema": "SurroundingHazard",
+      "description": "Natural, technological or infrastructure surround hazards list"
+    },
+    "/evidences/{evidenceId}": {
+      "schema": "EvidenceLog",
+      "description": "Compliance evidence entries logs"
+    }
+  }
+}
