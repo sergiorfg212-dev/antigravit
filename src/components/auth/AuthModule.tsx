@@ -34,6 +34,73 @@ export function AuthModule() {
 
   const { setCurrentUser, setIsAdminMode } = useAppStore();
 
+  const mergeLocalDummyDataToCurrentUser = async (newUserId: string) => {
+    const collectionsList = [
+      'companies', 'diagnoses', 'findings', 'riskAssessments', 'safetyActions',
+      'checklistItems', 'legalMatrix', 'safetyProgram', 'accidentRecords',
+      'accidentEvents', 'surroundingHazards', 'evidences'
+    ];
+    
+    let mergedAny = false;
+    
+    for (const tableName of collectionsList) {
+      const dummyKey = `nom030_fallback_${tableName}_local_user_uid`;
+      const storedDummy = localStorage.getItem(dummyKey);
+      
+      if (storedDummy) {
+        try {
+          const dummyItems = JSON.parse(storedDummy);
+          if (Array.isArray(dummyItems) && dummyItems.length > 0) {
+            const currentUserKey = `nom030_fallback_${tableName}_${newUserId}`;
+            const storedCurrent = localStorage.getItem(currentUserKey);
+            let currentItems = [];
+            if (storedCurrent) {
+              currentItems = JSON.parse(storedCurrent);
+            }
+            
+            const updatedDummyItems = dummyItems.map((item: any) => {
+              const newItem = { ...item };
+              newItem.userId = newUserId;
+              newItem.updatedAt = new Date();
+              return newItem;
+            });
+            
+            const mergedList = [...currentItems];
+            updatedDummyItems.forEach((dummyItem: any) => {
+              const exists = mergedList.some(item => item.id === dummyItem.id);
+              if (!exists) {
+                mergedList.push(dummyItem);
+              }
+            });
+            
+            localStorage.setItem(currentUserKey, JSON.stringify(mergedList));
+            
+            const dbTable = ddb.table(tableName);
+            if (dbTable) {
+              for (const item of updatedDummyItems) {
+                try {
+                  await dbTable.put(item);
+                } catch (putErr) {
+                  console.warn(`[Auto-Merge] Failed to write item ${item.id} to db:`, putErr);
+                }
+              }
+            }
+            
+            mergedAny = true;
+          }
+          
+          localStorage.removeItem(dummyKey);
+        } catch (e) {
+          console.error(`[Auto-Merge Error] Table ${tableName}:`, e);
+        }
+      }
+    }
+    
+    if (mergedAny) {
+      toast.success("¡Hemos detectado datos creados en el Modo Local y los sincronizamos con tu cuenta en la nube!");
+    }
+  };
+
   const handleGoogleLogin = async () => {
     setLoading(true);
     setShowConfigHelp(false);
@@ -155,6 +222,9 @@ export function AuthModule() {
       } finally {
         toast.dismiss(syncToastId);
       }
+
+      // Merge local dummy data to current user if any exists
+      await mergeLocalDummyDataToCurrentUser(fbUser.uid);
 
       // Local db persistence for backwards compatibility
       const dexieUserObj = {
@@ -383,6 +453,9 @@ export function AuthModule() {
           toast.dismiss(syncToastId);
         }
 
+        // Merge local dummy data to current user if any exists
+        await mergeLocalDummyDataToCurrentUser(fbUser.uid);
+
         // Store user in local Dexie database for backwards compatibility
         const dexieUserObj = {
           name: userProfile.name,
@@ -463,6 +536,9 @@ export function AuthModule() {
         try {
           localStorage.setItem(`nom030_fallback_users_${fbUser.uid}`, JSON.stringify([userProfile]));
         } catch (e) {}
+
+        // Merge local dummy data to current user if any exists
+        await mergeLocalDummyDataToCurrentUser(fbUser.uid);
 
         // 3. Put user locally in Dexie database
         const dexieUserObj = {
