@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { useAppStore } from "../../hooks/useAppStore";
 
 import { auth } from '../../lib/firebase';
+import { setLocalFallbackMode } from '../../lib/db';
 
 interface SidebarProps {
   activeTab: string;
@@ -58,6 +59,13 @@ export function AppSidebar({ activeTab: _, onTabChange: __, isOpen = false, onCl
 
   const handleLogout = () => {
     auth.signOut().catch(err => console.error("Firebase sign out failed:", err));
+    
+    try {
+      localStorage.removeItem('nom030_use_local_only');
+      localStorage.removeItem('nom030_local_user');
+      setLocalFallbackMode(false);
+    } catch (e) {}
+
     setCurrentUser(null);
     setCurrentCompanyId(null);
     setActiveTab("companies");

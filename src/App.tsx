@@ -34,6 +34,23 @@ export default function App() {
   const [initializing, setInitializing] = useState(true);
 
   useEffect(() => {
+    if (localStorage.getItem("nom030_use_local_only") === "true") {
+      const storedLocalUser = localStorage.getItem("nom030_local_user");
+      if (storedLocalUser) {
+        try {
+          const parsed = JSON.parse(storedLocalUser);
+          setLocalFallbackMode(true);
+          initializeFirestoreListeners("local_user_uid", parsed.email);
+          setCurrentUser(parsed);
+          setIsAdminMode(false);
+          setInitializing(false);
+          return;
+        } catch (e) {
+          console.warn("Error restoring local user:", e);
+        }
+      }
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       try {
         if (fbUser) {

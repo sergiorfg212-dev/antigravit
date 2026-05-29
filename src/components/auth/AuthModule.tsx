@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAppStore } from '../../hooks/useAppStore';
-import { db as ddb, getLocalFallbackMode, setLocalFallbackMode } from '../../lib/db';
+import { db as ddb, getLocalFallbackMode, setLocalFallbackMode, initializeFirestoreListeners } from '../../lib/db';
 import { auth, db as fdb } from '../../lib/firebase';
 import { Button } from '../ui/button';
 import { ShieldAlert, LogIn, UserPlus, Mail, ArrowLeft, Loader2 } from 'lucide-react';
@@ -198,6 +198,28 @@ export function AuthModule() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleLocalOnlyLogin = () => {
+    const localUser = {
+      name: "Asesor Local (Sin Conexión)",
+      email: "local.user@nom030.com",
+      role: "user" as const,
+      createdAt: new Date()
+    };
+    
+    try {
+      localStorage.setItem('nom030_use_local_only', 'true');
+      localStorage.setItem('nom030_local_user', JSON.stringify(localUser));
+    } catch (e) {}
+
+    setLocalFallbackMode(true);
+    initializeFirestoreListeners("local_user_uid", localUser.email);
+    
+    setCurrentUser(localUser);
+    setIsAdminMode(false);
+    
+    toast.success("¡Ingresaste en Modo Local! Los cambios se guardarán en tu navegador de forma segura.");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -627,7 +649,7 @@ export function AuthModule() {
                   type="button"
                   onClick={handleGoogleLogin}
                   disabled={loading}
-                  className="w-full bg-white hover:bg-slate-50 text-slate-700 font-bold py-3.5 px-4 border border-slate-300 rounded-xl shadow-sm hover:shadow transition-all flex items-center justify-center gap-3 text-sm focus:ring-4 focus:ring-slate-100 disabled:opacity-50"
+                  className="w-full bg-white hover:bg-slate-50 text-slate-700 font-bold py-3.5 px-4 border border-slate-300 rounded-xl shadow-sm hover:shadow transition-all flex items-center justify-center gap-3 text-sm focus:ring-4 focus:ring-slate-100 disabled:opacity-50 cursor-pointer"
                 >
                   <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="currentColor">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -636,6 +658,16 @@ export function AuthModule() {
                     <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
                   </svg>
                   Iniciar sesión con Google
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleLocalOnlyLogin}
+                  disabled={loading}
+                  className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3.5 px-4 rounded-xl shadow-sm hover:shadow transition-all flex items-center justify-center gap-3 text-sm focus:ring-4 focus:ring-slate-100 disabled:opacity-50 cursor-pointer mt-2"
+                >
+                  <ShieldAlert className="w-5 h-5 text-amber-400" />
+                  Acceder en Modo 100% Local (Sin Firebase)
                 </button>
               </div>
 
