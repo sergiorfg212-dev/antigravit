@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { db, type Company } from "../../lib/db";
 import { useDexieQuery } from "../../hooks/useDexie";
 import { useAppStore } from "../../hooks/useAppStore";
@@ -27,6 +27,24 @@ export function SettingsModule() {
   const letterheadInputRef = useRef<HTMLInputElement>(null);
   const sigImageInputRef = useRef<HTMLInputElement>(null);
   const coverBgInputRef = useRef<HTMLInputElement>(null);
+  const [geminiKey, setGeminiKey] = useState(
+    () => (typeof window !== 'undefined' ? localStorage.getItem('nom030_gemini_api_key') || '' : '')
+  );
+
+  const handleSaveGeminiKey = () => {
+    try {
+      localStorage.setItem('nom030_gemini_api_key', geminiKey.trim());
+      toast.success("Clave de Gemini API guardada correctamente. La IA se ejecutará directamente.");
+    } catch (e) {
+      toast.error("Error al guardar la clave.");
+    }
+  };
+
+  const handleClearGeminiKey = () => {
+    setGeminiKey('');
+    localStorage.removeItem('nom030_gemini_api_key');
+    toast.success("Clave de Gemini API eliminada.");
+  };
 
   const company = useDexieQuery(
     () => currentCompanyId ? db.companies.get(currentCompanyId) : Promise.resolve(undefined),
@@ -77,6 +95,42 @@ export function SettingsModule() {
         <PWAInstallGuide />
         <CloudSyncBoard />
 
+        <Card className="border-slate-100 shadow-sm overflow-hidden mb-6">
+          <CardHeader className="bg-slate-50/50 border-b border-slate-100">
+            <CardTitle className="text-sm font-bold flex items-center gap-2 text-indigo-700">
+               🔑 Configuración de Inteligencia Artificial (Gemini)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 pt-4">
+             <p className="text-xs text-slate-500 leading-relaxed">
+                Para utilizar las sugerencias de la IA en la clasificación de riesgos, peligros y marco legal mientras usas el Modo Local, ingresa tu clave API gratuita de Google Gemini.
+             </p>
+             <div className="space-y-2">
+                <Label className="text-[10px] uppercase font-black text-slate-500 tracking-wider">Clave API de Gemini</Label>
+                <div className="flex gap-2">
+                   <Input 
+                      type="password"
+                      value={geminiKey}
+                      onChange={(e) => setGeminiKey(e.target.value)}
+                      placeholder="AIzaSy..." 
+                      className="rounded-xl border-slate-200 focus:ring-blue-500 flex-1"
+                   />
+                   <Button onClick={handleSaveGeminiKey} className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl">
+                      Guardar
+                   </Button>
+                   {geminiKey && (
+                      <Button onClick={handleClearGeminiKey} variant="outline" className="rounded-xl border-slate-200 text-slate-500 hover:bg-slate-50">
+                         Limpiar
+                      </Button>
+                   )}
+                </div>
+                <p className="text-[10px] text-slate-400">
+                   Puedes obtener una clave gratuita en <a href="https://aistudio.google.com/" target="_blank" rel="noreferrer" className="text-blue-600 underline font-bold">Google AI Studio</a>. Se guarda localmente y de forma segura en tu navegador.
+                </p>
+             </div>
+          </CardContent>
+        </Card>
+
         <div className="text-center py-12 bg-white rounded-3xl border border-slate-100 flex flex-col items-center justify-center p-6">
           <div className="w-12 h-12 rounded-full bg-slate-50 text-slate-400 flex items-center justify-center mb-4">
             <Building className="w-6 h-6" />
@@ -99,6 +153,42 @@ export function SettingsModule() {
 
        <PWAInstallGuide />
        <CloudSyncBoard />
+
+       <Card className="border-slate-100 shadow-sm overflow-hidden mb-6">
+          <CardHeader className="bg-slate-50/50 border-b border-slate-100">
+            <CardTitle className="text-sm font-bold flex items-center gap-2 text-indigo-700">
+               🔑 Configuración de Inteligencia Artificial (Gemini)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 pt-4">
+             <p className="text-xs text-slate-500 leading-relaxed">
+                Para utilizar las sugerencias de la IA en la clasificación de riesgos, peligros y marco legal mientras usas el Modo Local, ingresa tu clave API gratuita de Google Gemini.
+             </p>
+             <div className="space-y-2">
+                <Label className="text-[10px] uppercase font-black text-slate-500 tracking-wider">Clave API de Gemini</Label>
+                <div className="flex gap-2">
+                   <Input 
+                      type="password"
+                      value={geminiKey}
+                      onChange={(e) => setGeminiKey(e.target.value)}
+                      placeholder="AIzaSy..." 
+                      className="rounded-xl border-slate-200 focus:ring-blue-500 flex-1"
+                   />
+                   <Button onClick={handleSaveGeminiKey} className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl">
+                      Guardar
+                   </Button>
+                   {geminiKey && (
+                      <Button onClick={handleClearGeminiKey} variant="outline" className="rounded-xl border-slate-200 text-slate-500 hover:bg-slate-50">
+                         Limpiar
+                      </Button>
+                   )}
+                </div>
+                <p className="text-[10px] text-slate-400">
+                   Puedes obtener una clave gratuita en <a href="https://aistudio.google.com/" target="_blank" rel="noreferrer" className="text-blue-600 underline font-bold">Google AI Studio</a>. Se guarda localmente y de forma segura en tu navegador.
+                </p>
+             </div>
+          </CardContent>
+       </Card>
 
        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <Card className="border-slate-100 shadow-sm overflow-hidden">

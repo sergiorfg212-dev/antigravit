@@ -9,7 +9,104 @@ export enum Type {
   OBJECT = "OBJECT"
 }
 
+async function fetchDirectGemini(modelName: string, contents: any, config: any, apiKey: string): Promise<string> {
+  const modelsToTry = [modelName, "gemini-2.5-flash", "gemini-1.5-flash"];
+  const uniqueModels = Array.from(new Set(modelsToTry.filter(Boolean)));
+  
+  let lastError: any = null;
+  
+  for (const m of uniqueModels) {
+    try {
+      let formattedContents = contents;
+      if (typeof contents === "string") {
+        formattedContents = [
+          {
+            role: "user",
+            parts: [
+              {
+                text: contents
+              }
+            ]
+          }
+        ];
+      } else if (!Array.isArray(contents) && contents && typeof contents === "object") {
+        if (contents.parts) {
+          formattedContents = [contents];
+        } else {
+          formattedContents = [
+            {
+              role: "user",
+              parts: [
+                {
+                  text: JSON.stringify(contents)
+                }
+              ]
+            }
+          ];
+        }
+      }
+      
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${apiKey}`;
+      
+      const bodyPayload: any = {
+        contents: formattedContents
+      };
+      
+      if (config) {
+        bodyPayload.generationConfig = {
+          responseMimeType: config.responseMimeType,
+          responseSchema: config.responseSchema,
+          temperature: config.temperature,
+          candidateCount: config.candidateCount,
+          maxOutputTokens: config.maxOutputTokens,
+          stopSequences: config.stopSequences
+        };
+      }
+      
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(bodyPayload)
+      });
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`Google API error (${res.status}): ${errorText}`);
+      }
+      
+      const data = await res.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (text === undefined) {
+        throw new Error("No text returned in candidates");
+      }
+      return text;
+    } catch (err: any) {
+      console.warn(`Failed direct Gemini fetch with model ${m}: ${err.message || err}`);
+      lastError = err;
+    }
+  }
+  
+  throw lastError || new Error("Failed to generate content with all attempted models");
+}
+
 async function generateContent({ model, contents, config }: { model: string; contents: any; config?: any }) {
+  const localKey = typeof window !== 'undefined' ? localStorage.getItem('nom030_gemini_api_key') || '' : '';
+  const envKey = process.env.GEMINI_API_KEY || '';
+  const apiKey = (localKey || envKey).trim();
+
+  if (apiKey) {
+    try {
+      console.log(`[GEMINI SERVICE] Using direct client-side fetch. Model: ${model}. Key source: ${localKey ? 'localStorage' : 'environment'}`);
+      const text = await fetchDirectGemini(model, contents, config, apiKey);
+      return { text };
+    } catch (directError: any) {
+      console.error("[GEMINI SERVICE] Direct client-side fetch failed:", directError);
+      console.warn("[GEMINI SERVICE] Falling back to proxy /api/gemini...");
+    }
+  }
+
   const response = await fetch("/api/gemini", {
     method: "POST",
     headers: {
