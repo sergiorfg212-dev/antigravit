@@ -327,6 +327,18 @@ export function getLocalFallbackMode() {
   return isLocalFallbackMode;
 }
 
+export function getActiveUserId(): string {
+  if (auth.currentUser?.uid) {
+    return auth.currentUser.uid;
+  }
+  try {
+    if (typeof window !== 'undefined' && localStorage.getItem('nom030_use_local_only') === 'true') {
+      return 'local_user_uid';
+    }
+  } catch (e) {}
+  return 'anonymous_user';
+}
+
 export function setLocalFallbackMode(active: boolean) {
   if (isLocalFallbackMode !== active) {
     isLocalFallbackMode = active;
@@ -400,6 +412,39 @@ export async function initializeFirestoreListeners(userId: string, email: string
     'evidences',
     'users'
   ];
+
+  // Migrate any 'anonymous_user' fallback data to the active userId if needed
+  if (userId && userId !== 'anonymous_user') {
+    collectionsList.forEach((tableName) => {
+      try {
+        const anonKey = `${LOCAL_STORAGE_PREFIX}${tableName}_anonymous_user`;
+        const anonData = localStorage.getItem(anonKey);
+        if (anonData) {
+          const userKey = `${LOCAL_STORAGE_PREFIX}${tableName}_${userId}`;
+          const userData = localStorage.getItem(userKey);
+          
+          let mergedItems = JSON.parse(anonData);
+          if (userData) {
+            const existingItems = JSON.parse(userData);
+            if (Array.isArray(existingItems) && Array.isArray(mergedItems)) {
+              existingItems.forEach((item: any) => {
+                const exists = mergedItems.some((m: any) => m.id === item.id);
+                if (!exists) {
+                  mergedItems.push(item);
+                }
+              });
+            }
+          }
+          
+          localStorage.setItem(userKey, JSON.stringify(mergedItems));
+          localStorage.removeItem(anonKey);
+          console.log(`[DB Migration] Migrated/Merged ${tableName} from anonymous_user to ${userId}`);
+        }
+      } catch (e) {
+        console.warn(`[DB Migration Error] Failed to migrate ${tableName}:`, e);
+      }
+    });
+  }
 
   // Load from local storage baseline first so user doesn't see blank arrays in cold loads
   collectionsList.forEach((tableName) => {
@@ -584,7 +629,7 @@ export function clearLocalCache() {
  * Direct write helper to set state on Firebase Firestore
  */
 async function saveDoc(tableName: string, obj: any) {
-  const userId = auth.currentUser?.uid || 'anonymous_user';
+  const userId = getActiveUserId();
 
   if (obj && obj.id === undefined) {
     obj.id = generateUniqueId();
@@ -712,7 +757,7 @@ function createCollection<T extends { id?: any; uid?: string }>(tableName: strin
       const storeKey = tableName === 'legalMatrix' ? 'legalMatrix' : tableName;
       useDbStore.getState().setCollection(storeKey, nextItems);
 
-      const userId = auth.currentUser?.uid || 'anonymous_user';
+      const userId = getActiveUserId();
       try {
         localStorage.setItem(`${LOCAL_STORAGE_PREFIX}${tableName}_${userId}`, JSON.stringify(nextItems));
       } catch (lsErr) {
@@ -748,7 +793,7 @@ function createCollection<T extends { id?: any; uid?: string }>(tableName: strin
     clear: async () => {
       const storeKey = tableName === 'legalMatrix' ? 'legalMatrix' : tableName;
       useDbStore.getState().setCollection(storeKey, []);
-      const userId = auth.currentUser?.uid || 'anonymous_user';
+      const userId = getActiveUserId();
       try {
         localStorage.removeItem(`${LOCAL_STORAGE_PREFIX}${tableName}_${userId}`);
       } catch (e) {}
@@ -790,7 +835,7 @@ function createCollection<T extends { id?: any; uid?: string }>(tableName: strin
       const nextItems = items.filter(item => !keys.includes(item.id) && !(item.uid && keys.includes(item.uid)));
       useDbStore.getState().setCollection(storeKey, nextItems);
 
-      const userId = auth.currentUser?.uid || 'anonymous_user';
+      const userId = getActiveUserId();
       try {
         localStorage.setItem(`${LOCAL_STORAGE_PREFIX}${tableName}_${userId}`, JSON.stringify(nextItems));
       } catch (lsErr) {
