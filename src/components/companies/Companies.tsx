@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { db, type Company } from "../../lib/db";
+import { db, type Company, getActiveUserId } from "../../lib/db";
 import { useDexieQuery } from "../../hooks/useDexie";
 import { useAppStore } from "../../hooks/useAppStore";
 import { cn } from "../../lib/utils";
@@ -297,7 +297,7 @@ export function Companies({ onSelect }: CompaniesProps) {
       return c.userId?.toString() === selectedUserId && matchesSearch;
     } else {
       // Normal: Only show companies belonging to the current user, or legacy/universal companies (no userId)
-      const matchesUser = !currentUser || !c.userId || c.userId === currentUser.id;
+      const matchesUser = !currentUser || !c.userId || c.userId === getActiveUserId();
       return matchesUser && matchesSearch;
     }
   });
@@ -368,7 +368,7 @@ export function Companies({ onSelect }: CompaniesProps) {
         totalPlotArea: totalPlotAreaNum,
         responsibleSignature: signature,
         studyDate: parsedStudyDate,
-        userId: currentUser?.id,
+        userId: getActiveUserId(),
         creatorName: currentUser?.name || currentUser?.email
       };
 
@@ -1050,7 +1050,7 @@ export function Companies({ onSelect }: CompaniesProps) {
                               size="icon"
                               title={user.role === 'admin' ? "Cambiar a Asesor (Usuario)" : "Cambiar a Administrador"}
                               onClick={async () => {
-                                if (user.id === currentUser?.id) {
+                                if (user.email === currentUser?.email) {
                                   toast.error("No puedes cambiar tu propio rol.");
                                   return;
                                 }
@@ -1073,7 +1073,7 @@ export function Companies({ onSelect }: CompaniesProps) {
                               size="icon"
                               title={user.isBlocked ? "Desbloquear usuario/asesor" : "Bloquear usuario/asesor"}
                               onClick={async () => {
-                                if (user.id === currentUser?.id) {
+                                if (user.email === currentUser?.email) {
                                   toast.error("No puedes bloquear tu propio usuario.");
                                   return;
                                 }
@@ -1095,7 +1095,7 @@ export function Companies({ onSelect }: CompaniesProps) {
                               size="icon"
                               title="Eliminar usuario definitivamente"
                               onClick={async () => {
-                                if (user.id === currentUser?.id) {
+                                if (user.email === currentUser?.email) {
                                   toast.error("No puedes auto-eliminarte de la sesión actual.");
                                   return;
                                 }
