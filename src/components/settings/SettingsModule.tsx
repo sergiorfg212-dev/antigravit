@@ -46,6 +46,63 @@ export function SettingsModule() {
     toast.success("Clave de Gemini API eliminada.");
   };
 
+  const handleExportBackup = () => {
+    try {
+      const backupData: Record<string, string> = {};
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('nom030_fallback_') || key.startsWith('nom030_') || key === 'nom030-auth-storage')) {
+          const val = localStorage.getItem(key);
+          if (val) {
+            backupData[key] = val;
+          }
+        }
+      }
+      
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      const dateStr = new Date().toISOString().split('T')[0];
+      downloadAnchor.setAttribute("download", `respaldo_nom030_${dateStr}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      toast.success("Respaldo descargado con éxito. Guarda este archivo de forma segura.");
+    } catch (e) {
+      toast.error("Error al generar el respaldo de seguridad.");
+    }
+  };
+
+  const handleImportBackup = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target?.result as string);
+        if (typeof data !== 'object' || data === null) {
+          throw new Error("Formato de respaldo inválido.");
+        }
+
+        // Restore keys to localStorage
+        Object.keys(data).forEach((key) => {
+          if (key.startsWith('nom030_fallback_') || key.startsWith('nom030_') || key === 'nom030-auth-storage') {
+            localStorage.setItem(key, data[key]);
+          }
+        });
+
+        toast.success("Respaldo restaurado con éxito. Recargando la aplicación...");
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } catch (err) {
+        toast.error("Error al procesar el archivo de respaldo. Asegúrate de seleccionar un archivo válido de respaldo NOM-030.");
+      }
+    };
+    reader.readAsText(file);
+  };
+
   const company = useDexieQuery(
     () => currentCompanyId ? db.companies.get(currentCompanyId) : Promise.resolve(undefined),
     [currentCompanyId]
@@ -131,6 +188,35 @@ export function SettingsModule() {
           </CardContent>
         </Card>
 
+        <Card className="border-slate-100 shadow-sm overflow-hidden mb-6">
+          <CardHeader className="bg-slate-50/50 border-b border-slate-100">
+            <CardTitle className="text-sm font-bold flex items-center gap-2 text-indigo-700">
+               📦 Copia de Seguridad y Restauración (Modo Local)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 pt-4">
+             <p className="text-xs text-slate-500 leading-relaxed">
+                Descarga una copia de seguridad de todos tus datos locales (empresas, diagnósticos y riesgos) en un archivo JSON para resguardar tu avance, transferirlo a otro navegador o restaurarlo si cambias de enlace.
+             </p>
+             <div className="flex flex-wrap gap-4">
+                <Button onClick={handleExportBackup} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs px-4 py-2">
+                   💾 Exportar Copia de Seguridad
+                </Button>
+                <div className="relative">
+                   <Button variant="outline" className="rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50 text-xs px-4 py-2">
+                      📂 Importar Copia de Seguridad
+                   </Button>
+                   <input 
+                      type="file" 
+                      accept=".json"
+                      onChange={handleImportBackup}
+                      className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                   />
+                </div>
+             </div>
+          </CardContent>
+        </Card>
+
         <div className="text-center py-12 bg-white rounded-3xl border border-slate-100 flex flex-col items-center justify-center p-6">
           <div className="w-12 h-12 rounded-full bg-slate-50 text-slate-400 flex items-center justify-center mb-4">
             <Building className="w-6 h-6" />
@@ -151,10 +237,10 @@ export function SettingsModule() {
           <p className="text-slate-500">Gestión de identidad corporativa y firmas autorizadas.</p>
        </header>
 
-       <PWAInstallGuide />
-       <CloudSyncBoard />
+               <PWAInstallGuide />
+        <CloudSyncBoard />
 
-       <Card className="border-slate-100 shadow-sm overflow-hidden mb-6">
+        <Card className="border-slate-100 shadow-sm overflow-hidden mb-6">
           <CardHeader className="bg-slate-50/50 border-b border-slate-100">
             <CardTitle className="text-sm font-bold flex items-center gap-2 text-indigo-700">
                🔑 Configuración de Inteligencia Artificial (Gemini)
@@ -186,6 +272,35 @@ export function SettingsModule() {
                 <p className="text-[10px] text-slate-400">
                    Puedes obtener una clave gratuita en <a href="https://aistudio.google.com/" target="_blank" rel="noreferrer" className="text-blue-600 underline font-bold">Google AI Studio</a>. Se guarda localmente y de forma segura en tu navegador.
                 </p>
+             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-slate-100 shadow-sm overflow-hidden mb-6">
+          <CardHeader className="bg-slate-50/50 border-b border-slate-100">
+            <CardTitle className="text-sm font-bold flex items-center gap-2 text-indigo-700">
+               📦 Copia de Seguridad y Restauración (Modo Local)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 pt-4">
+             <p className="text-xs text-slate-500 leading-relaxed">
+                Descarga una copia de seguridad de todos tus datos locales (empresas, diagnósticos y riesgos) en un archivo JSON para resguardar tu avance, transferirlo a otro navegador o restaurarlo si cambias de enlace.
+             </p>
+             <div className="flex flex-wrap gap-4">
+                <Button onClick={handleExportBackup} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs px-4 py-2">
+                   💾 Exportar Copia de Seguridad
+                </Button>
+                <div className="relative">
+                   <Button variant="outline" className="rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50 text-xs px-4 py-2">
+                      📂 Importar Copia de Seguridad
+                   </Button>
+                   <input 
+                      type="file" 
+                      accept=".json"
+                      onChange={handleImportBackup}
+                      className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                   />
+                </div>
              </div>
           </CardContent>
        </Card>
