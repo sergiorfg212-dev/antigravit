@@ -1,4 +1,5 @@
 import { db, type SafetyProgramItem, type Company, type Finding, type SurroundingHazard, type AccidentRecord, type RiskAssessment, type AccidentEvent } from "../lib/db";
+import { toast } from "sonner";
 
 export enum Type {
   STRING = "STRING",
@@ -10,7 +11,7 @@ export enum Type {
 }
 
 async function fetchDirectGemini(modelName: string, contents: any, config: any, apiKey: string): Promise<string> {
-  const modelsToTry = [modelName, "gemini-2.5-flash", "gemini-1.5-flash"];
+  const modelsToTry = [modelName, "gemini-2.0-flash", "gemini-1.5-flash"];
   const uniqueModels = Array.from(new Set(modelsToTry.filter(Boolean)));
   
   let lastError: any = null;
@@ -73,13 +74,22 @@ async function fetchDirectGemini(modelName: string, contents: any, config: any, 
       
       if (!res.ok) {
         const errorText = await res.text();
-        throw new Error(`Google API error (${res.status}): ${errorText}`);
+        let cleanMsg = `HTTP Error ${res.status}`;
+        try {
+          const parsed = JSON.parse(errorText);
+          if (parsed.error?.message) {
+            cleanMsg = parsed.error.message;
+          }
+        } catch (e) {
+          cleanMsg = errorText || cleanMsg;
+        }
+        throw new Error(cleanMsg);
       }
       
       const data = await res.json();
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
       if (text === undefined) {
-        throw new Error("No text returned in candidates");
+        throw new Error("La respuesta de la IA no contiene texto.");
       }
       return text;
     } catch (err: any) {
@@ -88,13 +98,23 @@ async function fetchDirectGemini(modelName: string, contents: any, config: any, 
     }
   }
   
-  throw lastError || new Error("Failed to generate content with all attempted models");
+  throw lastError || new Error("No se pudo conectar con los servidores de Google Gemini.");
 }
 
 async function generateContent({ model, contents, config }: { model: string; contents: any; config?: any }) {
   const localKey = typeof window !== 'undefined' ? localStorage.getItem('nom030_gemini_api_key') || '' : '';
   const envKey = process.env.GEMINI_API_KEY || '';
   const apiKey = (localKey || envKey).trim();
+
+  const isLocalhost = typeof window !== 'undefined' && 
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.startsWith('192.168.'));
+
+  // If in production (Vercel) and no API key is set, we throw immediately so the user knows they need to set it
+  if (!apiKey && !isLocalhost) {
+    const errorMsg = "La clave API de Gemini no está configurada. Por favor ve a Configuración e ingresa tu API Key para usar la IA.";
+    toast.error(errorMsg, { duration: 6000 });
+    throw new Error(errorMsg);
+  }
 
   if (apiKey) {
     try {
@@ -103,23 +123,45 @@ async function generateContent({ model, contents, config }: { model: string; con
       return { text };
     } catch (directError: any) {
       console.error("[GEMINI SERVICE] Direct client-side fetch failed:", directError);
+      
+      if (!isLocalhost) {
+        // In production, the proxy won't work, so throw the direct error immediately
+        const cleanMessage = directError.message || String(directError);
+        let userFriendlyMsg = `Error en la IA: ${cleanMessage}`;
+        if (cleanMessage.includes("API key not valid")) {
+          userFriendlyMsg = "La clave API de Gemini es inválida. Por favor, revísala en la sección de Configuración.";
+        } else if (cleanMessage.includes("quota") || cleanMessage.includes("Quota")) {
+          userFriendlyMsg = "Se ha superado el límite de cuota de tu clave de Gemini. Por favor, intenta de nuevo en unos minutos.";
+        }
+        toast.error(userFriendlyMsg, { duration: 6000 });
+        throw new Error(userFriendlyMsg);
+      }
+      
       console.warn("[GEMINI SERVICE] Falling back to proxy /api/gemini...");
     }
   }
 
-  const response = await fetch("/api/gemini", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ model, contents, config }),
-  });
-  if (!response.ok) {
-    const errData = await response.json().catch(() => ({}));
-    throw new Error(errData.error || "Failed to generate content from Gemini proxy");
+  // Fallback to Express proxy on localhost
+  try {
+    const response = await fetch("/api/gemini", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ model, contents, config }),
+    });
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error || "Failed to generate content from Gemini proxy");
+    }
+    const data = await response.json();
+    return { text: data.text };
+  } catch (proxyError: any) {
+    console.error("[GEMINI SERVICE] Proxy fetch failed:", proxyError);
+    const proxyMsg = proxyError.message || String(proxyError);
+    toast.error(`Error de IA (Proxy): ${proxyMsg}`);
+    throw proxyError;
   }
-  const data = await response.json();
-  return { text: data.text };
 }
 
 const ai = {
