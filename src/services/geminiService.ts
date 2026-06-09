@@ -827,7 +827,8 @@ export async function analyzeMaterialFromImage(
           "confidence": "Alta, Media o Baja",
           "description": "Explicación breve de por qué se detecta este material y sus propiedades generales de resistencia."
         }
-      ]
+      ],
+      "technicalDescription": "Una descripción técnica detallada y formal (de 1-2 párrafos) del material o estructura identificada en la foto, evaluando su resistencia, durabilidad e idoneidad para un centro de trabajo."
     }
   `;
 
@@ -852,9 +853,10 @@ export async function analyzeMaterialFromImage(
               },
               required: ["materialName", "confidence", "description"]
             }
-          }
+          },
+          technicalDescription: { type: Type.STRING }
         },
-        required: ["suggestedMaterials"]
+        required: ["suggestedMaterials", "technicalDescription"]
       }
     }
   });
@@ -868,7 +870,8 @@ export async function analyzeMaterialFromImage(
         { materialName: "Block o Concreto", confidence: "Media", description: "Material rígido con textura rugosa detectado según la textura de la imagen." },
         { materialName: "Acabado de Yeso o Panel Tablaroca", confidence: "Media", description: "Superficie de apariencia lisa y homogénea." },
         { materialName: "Lámina o Metal Estructurado", confidence: "Baja", description: "En caso de apreciarse perfiles metálicos o corrugaciones." }
-      ]
+      ],
+      technicalDescription: "Material sólido estructural de block de concreto o panel rígido con acabado superficial liso. Apto para delimitación de áreas con resistencia al fuego moderada y soporte de cargas de viento y peso estándar."
     };
   }
 }

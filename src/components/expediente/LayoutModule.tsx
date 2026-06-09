@@ -141,6 +141,114 @@ export function LayoutModule() {
     identifiedAreas: Array<{ name: string; description: string; selected: boolean }>;
   } | null>(null);
 
+  // Direct Photo Analyzer States (New Feature)
+  const directPhotoInputRef = useRef<HTMLInputElement>(null);
+  const [directPhoto, setDirectPhoto] = useState<string | null>(null);
+  const [isAnalyzingDirectPhoto, setIsAnalyzingDirectPhoto] = useState(false);
+  const [directAnalysisOptions, setDirectAnalysisOptions] = useState<Array<{ materialName: string; confidence: string; description: string }> | null>(null);
+  const [directAnalysisText, setDirectAnalysisText] = useState("");
+  const [directTargetArea, setDirectTargetArea] = useState("");
+  const [directCustomAreaName, setDirectCustomAreaName] = useState("");
+
+  const handleDirectPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("La imagen excede los 10MB permitidos.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setDirectPhoto(reader.result as string);
+      setDirectAnalysisOptions(null);
+      setDirectAnalysisText("");
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
+  const handleAnalyzeDirectPhoto = async () => {
+    if (!directPhoto) return;
+    setIsAnalyzingDirectPhoto(true);
+    setDirectAnalysisOptions(null);
+    setDirectAnalysisText("");
+    try {
+      const result = await analyzeMaterialFromImage(directPhoto);
+      setDirectAnalysisOptions(result.suggestedMaterials);
+      
+      const desc = (result as any).technicalDescription || 
+        (result.suggestedMaterials.length > 0 
+          ? `Se identificó material compatible con: ${result.suggestedMaterials[0].materialName}. ${result.suggestedMaterials[0].description}`
+          : "No se identificaron materiales específicos en la imagen.");
+      setDirectAnalysisText(desc);
+      toast.success("¡Fotografía analizada con éxito!");
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Error al analizar la imagen: " + (err.message || err));
+    } finally {
+      setIsAnalyzingDirectPhoto(false);
+    }
+  };
+
+  const handleAppendToDescription = async () => {
+    if (!directAnalysisText.trim()) return;
+    if (!currentCompanyId) return;
+
+    try {
+      const areaPrefix = directTargetArea === "new" && directCustomAreaName.trim()
+        ? `### Área: ${directCustomAreaName.trim()}\n`
+        : directTargetArea && directTargetArea !== "new"
+          ? `### Área: ${directTargetArea}\n`
+          : "";
+
+      const textToAppend = `\n\n${areaPrefix}${directAnalysisText.trim()}`;
+      const updatedDesc = infraDescription + textToAppend;
+      
+      setInfraDescription(updatedDesc);
+      await db.companies.update(currentCompanyId, {
+        infrastructureDescription: updatedDesc,
+        updatedAt: new Date()
+      });
+      toast.success("Descripción agregada a la memoria de infraestructura.");
+    } catch (e) {
+      toast.error("Fallo al guardar en la base de datos.");
+    }
+  };
+
+  const handleRegisterAsNewArea = async () => {
+    const areaName = directTargetArea === "new" ? directCustomAreaName.trim() : directTargetArea.trim();
+    if (!areaName) {
+      toast.error("Por favor, ingresa o selecciona un nombre para el área.");
+      return;
+    }
+    if (!directAnalysisText.trim()) {
+      toast.error("No hay descripción de material para registrar.");
+      return;
+    }
+    if (!currentCompanyId) return;
+
+    try {
+      const newAreaItem = {
+        id: crypto.randomUUID(),
+        name: areaName,
+        description: directAnalysisText.trim()
+      };
+      const updated = [...areas, newAreaItem];
+      await saveAreas(updated);
+      toast.success(`Área "${areaName}" registrada con éxito.`);
+      
+      setDirectPhoto(null);
+      setDirectAnalysisOptions(null);
+      setDirectAnalysisText("");
+      setDirectTargetArea("");
+      setDirectCustomAreaName("");
+    } catch (e) {
+      toast.error("Error al registrar el área.");
+    }
+  };
+
   const triggerPhotoAnalysis = (areaIndex: number, field: 'walls' | 'roof' | 'floors') => {
     setActiveAnalysisField({ areaIndex, field });
     setPhotoAnalysisOptions(null);
@@ -485,6 +593,180 @@ export function LayoutModule() {
                   <Save className="w-4 h-4 mr-2" /> Guardar Descripción
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Card: Analizador de Materiales por Foto (IA) */}
+          <Card className="border-slate-200 bg-white shadow-sm overflow-hidden">
+            <CardHeader className="bg-slate-50/50 border-b border-slate-100 pb-3">
+              <CardTitle className="text-lg flex items-center gap-2 text-indigo-950 font-extrabold">
+                <Camera className="w-5 h-5 text-indigo-650" />
+                📷 Analizador de Materiales e Infraestructura por Foto (IA)
+              </CardTitle>
+              <p className="text-xs text-slate-500">
+                Sube una fotografía de las estructuras (muros, pisos, techos) para detectar materiales con IA y refinar los detalles de forma interactiva.
+              </p>
+            </CardHeader>
+            <CardContent className="p-6 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Left side: Upload and Preview */}
+                <div className="flex flex-col justify-center items-center border-2 border-dashed border-slate-200 rounded-2xl p-4 bg-slate-50/50 min-h-[200px] relative group overflow-hidden">
+                  <input
+                    type="file"
+                    ref={directPhotoInputRef}
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleDirectPhotoChange}
+                  />
+                  {directPhoto ? (
+                    <div className="relative w-full h-full min-h-[180px] flex items-center justify-center">
+                      <img src={directPhoto} alt="Preview" className="max-w-full max-h-[220px] object-contain rounded-lg shadow-sm" />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDirectPhoto(null);
+                          setDirectAnalysisOptions(null);
+                          setDirectAnalysisText("");
+                        }}
+                        className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white p-1 rounded-full shadow-md transition-colors"
+                        title="Eliminar foto"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div 
+                      onClick={() => directPhotoInputRef.current?.click()}
+                      className="flex flex-col items-center justify-center text-center cursor-pointer p-6 w-full h-full"
+                    >
+                      <Upload className="w-10 h-10 text-slate-400 mb-3 group-hover:text-indigo-500 transition-colors" />
+                      <p className="text-xs font-bold text-slate-700 uppercase tracking-wider">Cargar imagen de material</p>
+                      <p className="text-[10px] text-slate-400 mt-2 leading-relaxed">Soporta formatos PNG, JPG o WEBP (máx. 10MB)</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Right side: Actions and Options */}
+                <div className="flex flex-col justify-between space-y-4">
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-bold text-slate-700 uppercase tracking-widest">Controles de análisis</h4>
+                    <p className="text-xs text-slate-500 leading-normal">
+                      Una vez que cargues la fotografía de la superficie física, presiona el botón para iniciar el análisis inteligente de materiales.
+                    </p>
+                    
+                    <Button
+                      type="button"
+                      onClick={handleAnalyzeDirectPhoto}
+                      disabled={!directPhoto || isAnalyzingDirectPhoto}
+                      className="bg-indigo-650 hover:bg-indigo-700 text-white font-extrabold tracking-tight uppercase text-[10px] py-4 w-full rounded-xl shadow-md flex items-center justify-center gap-2"
+                    >
+                      {isAnalyzingDirectPhoto ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Analizando estructura...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4" />
+                          Analizar con IA
+                        </>
+                      )}
+                    </Button>
+                  </div>
+
+                  {directAnalysisOptions && (
+                    <div className="space-y-2">
+                      <h5 className="text-[10px] font-black uppercase text-indigo-900 tracking-wider">Sugerencias de Material:</h5>
+                      <div className="flex flex-wrap gap-1.5">
+                        {directAnalysisOptions.map((opt, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => {
+                              const newDesc = `${opt.materialName}: ${opt.description}`;
+                              setDirectAnalysisText(newDesc);
+                              toast.info(`Cargada sugerencia: "${opt.materialName}"`);
+                            }}
+                            className="text-[9px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-full px-2.5 py-1 text-left flex items-center gap-1.5 transition-colors"
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                            {opt.materialName} ({opt.confidence})
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Editable results and save panel */}
+              {directAnalysisText && (
+                <div className="pt-4 border-t border-slate-100 space-y-4 animate-in fade-in duration-300">
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <Label className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                        Descripción de Material Detectado (Edición Colaborativa)
+                      </Label>
+                      <span className="text-[10px] text-slate-400 italic">Puedes editar este texto libremente</span>
+                    </div>
+                    <Textarea
+                      value={directAnalysisText}
+                      onChange={(e) => setDirectAnalysisText(e.target.value)}
+                      className="min-h-[100px] text-xs font-medium bg-white border-slate-200"
+                      placeholder="Edita la descripción aquí..."
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Asignar a un Área o Sección</Label>
+                      <select
+                        value={directTargetArea}
+                        onChange={(e) => setDirectTargetArea(e.target.value)}
+                        className="flex h-9 w-full rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                      >
+                        <option value="">Ninguna (Texto plano general)</option>
+                        {areas.map((a) => (
+                          <option key={a.id} value={a.name}>{a.name}</option>
+                        ))}
+                        <option value="new">+ Crear nueva área con este material...</option>
+                      </select>
+                    </div>
+
+                    {directTargetArea === "new" && (
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] font-bold text-indigo-900 uppercase tracking-widest">Nombre de la Nueva Área</Label>
+                        <Input
+                          placeholder="Ej. Almacén de Pinturas o Bodega"
+                          value={directCustomAreaName}
+                          onChange={(e) => setDirectCustomAreaName(e.target.value)}
+                          className="h-9 text-xs rounded-xl border-indigo-250 bg-indigo-50/10"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                    <Button
+                      type="button"
+                      onClick={handleAppendToDescription}
+                      className="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-bold h-10 text-xs rounded-xl flex items-center justify-center gap-1.5"
+                    >
+                      <Save className="w-4 h-4" />
+                      Agregar a la Descripción General
+                    </Button>
+
+                    <Button
+                      type="button"
+                      onClick={handleRegisterAsNewArea}
+                      className="flex-1 bg-indigo-650 hover:bg-indigo-700 text-white font-bold h-10 text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-md shadow-indigo-100"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Registrar como Nueva Área
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
