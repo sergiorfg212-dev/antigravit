@@ -15,7 +15,7 @@ async function fetchDirectGemini(modelName: string, contents: any, config: any, 
   const modelsToTry = [modelName, "gemini-2.0-flash", "gemini-1.5-flash"]
     .filter(m => m && m !== "gemini-3.5-flash" && m !== "gemini-2.5-flash");
   const uniqueModels = Array.from(new Set(modelsToTry));
-  const versionsToTry = ["v1", "v1beta"];
+  const versionsToTry = ["v1beta", "v1"];
   
   let lastError: any = null;
   
