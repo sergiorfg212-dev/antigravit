@@ -150,6 +150,12 @@ export function LayoutModule() {
   const [directTargetArea, setDirectTargetArea] = useState("");
   const [directCustomAreaName, setDirectCustomAreaName] = useState("");
 
+  const [localGeminiKey, setLocalGeminiKey] = useState(() => {
+    return typeof window !== 'undefined' ? localStorage.getItem('nom030_gemini_api_key') || '' : '';
+  });
+  const [tempApiKey, setTempApiKey] = useState("");
+  const hasApiKey = !!(localGeminiKey || (typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY));
+
   const handleDirectPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -650,28 +656,63 @@ export function LayoutModule() {
                 <div className="flex flex-col justify-between space-y-4">
                   <div className="space-y-3">
                     <h4 className="text-xs font-bold text-slate-700 uppercase tracking-widest">Controles de análisis</h4>
-                    <p className="text-xs text-slate-500 leading-normal">
-                      Una vez que cargues la fotografía de la superficie física, presiona el botón para iniciar el análisis inteligente de materiales.
-                    </p>
                     
-                    <Button
-                      type="button"
-                      onClick={handleAnalyzeDirectPhoto}
-                      disabled={!directPhoto || isAnalyzingDirectPhoto}
-                      className="bg-indigo-650 hover:bg-indigo-700 text-white font-extrabold tracking-tight uppercase text-[10px] py-4 w-full rounded-xl shadow-md flex items-center justify-center gap-2"
-                    >
-                      {isAnalyzingDirectPhoto ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          Analizando estructura...
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="w-4 h-4" />
-                          Analizar con IA
-                        </>
-                      )}
-                    </Button>
+                    {!hasApiKey ? (
+                      <div className="p-3 bg-amber-50 rounded-xl border border-amber-250 space-y-2">
+                        <p className="text-[10px] text-amber-800 leading-normal font-medium">
+                          ⚠️ <strong>Clave API de Gemini requerida:</strong> Al estar en una URL temporal, necesitas pegar tu API Key para usar la IA.
+                        </p>
+                        <div className="flex gap-1.5">
+                          <Input
+                            type="password"
+                            placeholder="Pega tu API Key de Gemini..."
+                            value={tempApiKey}
+                            onChange={(e) => setTempApiKey(e.target.value)}
+                            className="h-8 text-xs bg-white border-amber-300"
+                          />
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => {
+                              if (tempApiKey.trim()) {
+                                localStorage.setItem('nom030_gemini_api_key', tempApiKey.trim());
+                                setLocalGeminiKey(tempApiKey.trim());
+                                toast.success("Clave API guardada con éxito en este dominio.");
+                              } else {
+                                toast.error("Ingresa una clave válida.");
+                              }
+                            }}
+                            className="h-8 bg-amber-600 hover:bg-amber-700 text-white text-[10px] font-bold"
+                          >
+                            Guardar
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-xs text-slate-500 leading-normal">
+                          Una vez que cargues la fotografía de la superficie física, presiona el botón para iniciar el análisis inteligente de materiales.
+                        </p>
+                        <Button
+                          type="button"
+                          onClick={handleAnalyzeDirectPhoto}
+                          disabled={!directPhoto || isAnalyzingDirectPhoto}
+                          className="bg-indigo-650 hover:bg-indigo-700 text-white font-extrabold tracking-tight uppercase text-[10px] py-4 w-full rounded-xl shadow-md flex items-center justify-center gap-2"
+                        >
+                          {isAnalyzingDirectPhoto ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Analizando estructura...
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="w-4 h-4" />
+                              Analizar con IA
+                            </>
+                          )}
+                        </Button>
+                      </>
+                    )}
                   </div>
 
                   {directAnalysisOptions && (
@@ -1292,15 +1333,48 @@ export function LayoutModule() {
                           </p>
 
                           <div className="flex flex-wrap gap-2 items-center">
-                            <Button 
-                              type="button" 
-                              onClick={() => photoInputRef.current?.click()}
-                              disabled={isAnalyzingPhoto}
-                              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-8 text-xs rounded-lg shadow-sm flex items-center gap-1.5"
-                            >
-                              <Upload className="w-3.5 h-3.5" />
-                              {isAnalyzingPhoto ? "Analizando imagen..." : "Escanear / Capturar Foto"}
-                            </Button>
+                            {!hasApiKey ? (
+                              <div className="p-3 bg-amber-55/70 rounded-xl border border-amber-250 w-full space-y-2">
+                                <p className="text-[10px] text-amber-800 leading-normal font-semibold flex items-center gap-1">
+                                  <span>⚠️ Clave API de Gemini requerida:</span>
+                                </p>
+                                <div className="flex gap-1.5">
+                                  <Input
+                                    type="password"
+                                    placeholder="API Key de Gemini..."
+                                    value={tempApiKey}
+                                    onChange={(e) => setTempApiKey(e.target.value)}
+                                    className="h-8 text-xs bg-white border-amber-300 rounded-lg"
+                                  />
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    onClick={() => {
+                                      if (tempApiKey.trim()) {
+                                        localStorage.setItem('nom030_gemini_api_key', tempApiKey.trim());
+                                        setLocalGeminiKey(tempApiKey.trim());
+                                        toast.success("Clave API guardada.");
+                                      } else {
+                                        toast.error("Ingresa una clave válida.");
+                                      }
+                                    }}
+                                    className="h-8 bg-amber-600 hover:bg-amber-700 text-white text-[10px] font-bold px-3 rounded-lg"
+                                  >
+                                    Guardar
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <Button 
+                                type="button" 
+                                onClick={() => photoInputRef.current?.click()}
+                                disabled={isAnalyzingPhoto}
+                                className="bg-indigo-650 hover:bg-indigo-700 text-white font-bold h-8 text-xs rounded-lg shadow-sm flex items-center gap-1.5"
+                              >
+                                <Upload className="w-3.5 h-3.5" />
+                                {isAnalyzingPhoto ? "Analizando imagen..." : "Escanear / Capturar Foto"}
+                              </Button>
+                            )}
                             
                             {isAnalyzingPhoto && (
                               <div className="flex items-center gap-1.5 text-xs text-indigo-700 font-bold ml-2">
@@ -1409,24 +1483,56 @@ export function LayoutModule() {
             </div>
 
             {/* SECCIÓN 4: BOTÓN DE ACCIÓN GENERAR */}
-            <div className="flex justify-center pt-3">
-              <Button 
-                onClick={handleAIGenerate}
-                disabled={isAILoading}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white w-full sm:w-auto px-10 py-6 text-sm font-bold rounded-xl shadow-lg shadow-indigo-150 flex items-center justify-center gap-2 transition-all disabled:opacity-75"
-              >
-                {isAILoading ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin text-white" />
-                    Generando Memoria Técnica Descriptiva por Áreas...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-5 h-5 text-indigo-200" />
-                    Analizar Estructuras y Generar Diagnóstico
-                  </>
-                )}
-              </Button>
+            <div className="flex justify-center pt-3 text-center flex-col items-center gap-3">
+              {!hasApiKey ? (
+                <div className="p-4 bg-amber-50 rounded-2xl border border-amber-250 max-w-md w-full space-y-3 shadow-sm">
+                  <p className="text-xs text-amber-800 font-bold leading-relaxed">
+                    ⚠️ Clave API de Gemini requerida: Al estar en una URL de Vercel diferente, necesitas ingresar tu API Key de Gemini para utilizar la IA.
+                  </p>
+                  <div className="flex gap-2">
+                    <Input
+                      type="password"
+                      placeholder="Ingresa tu API Key de Gemini..."
+                      value={tempApiKey}
+                      onChange={(e) => setTempApiKey(e.target.value)}
+                      className="h-9 text-xs bg-white border-amber-300 rounded-xl"
+                    />
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        if (tempApiKey.trim()) {
+                          localStorage.setItem('nom030_gemini_api_key', tempApiKey.trim());
+                          setLocalGeminiKey(tempApiKey.trim());
+                          toast.success("Clave API guardada con éxito.");
+                        } else {
+                          toast.error("Ingresa una clave válida.");
+                        }
+                      }}
+                      className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-4 rounded-xl"
+                    >
+                      Guardar
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button 
+                  onClick={handleAIGenerate}
+                  disabled={isAILoading}
+                  className="bg-indigo-650 hover:bg-indigo-700 text-white w-full sm:w-auto px-10 py-6 text-sm font-bold rounded-xl shadow-lg shadow-indigo-150 flex items-center justify-center gap-2 transition-all disabled:opacity-75"
+                >
+                  {isAILoading ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin text-white" />
+                      Generando Memoria Técnica Descriptiva por Áreas...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-5 h-5 text-indigo-200" />
+                      Analizar Estructuras y Generar Diagnóstico
+                    </>
+                  )}
+                </Button>
+              )}
             </div>
 
             {/* Response Section */}

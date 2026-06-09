@@ -314,7 +314,7 @@ let isLocalFallbackMode = false;
 
 // Check if already fell back previously in this browser
 try {
-  if (localStorage.getItem('nom030_quota_exhausted_fallback') === 'true') {
+  if (localStorage.getItem('nom030_quota_exhausted_fallback') === 'true' || localStorage.getItem('nom030_use_local_only') === 'true') {
     isLocalFallbackMode = true;
     console.warn('[DB Fallback] Initialized directly in local fallback storage mode.');
     try {
@@ -328,14 +328,14 @@ export function getLocalFallbackMode() {
 }
 
 export function getActiveUserId(): string {
-  if (auth.currentUser?.uid) {
-    return auth.currentUser.uid;
-  }
   try {
     if (typeof window !== 'undefined' && localStorage.getItem('nom030_use_local_only') === 'true') {
       return 'local_user_uid';
     }
   } catch (e) {}
+  if (auth.currentUser?.uid) {
+    return auth.currentUser.uid;
+  }
   return 'anonymous_user';
 }
 
@@ -674,26 +674,12 @@ async function saveDoc(tableName: string, obj: any) {
     await setDoc(doc(fdb, tableName, docId), prepared);
     return obj.id;
   } catch (err: any) {
-    const errMsg = (err?.message || String(err)).toLowerCase();
-    const errCode = (err?.code || String(err?.code || '')).toLowerCase();
-    if (
-      errMsg.includes('quota') || 
-      errMsg.includes('resource-exhausted') || 
-      errMsg.includes('exhausted') || 
-      errMsg.includes('quota_exceeded') ||
-      errCode.includes('quota') ||
-      errCode.includes('resource-exhausted') ||
-      errCode.includes('quota_exceeded')
-    ) {
-      if (!isLocalFallbackMode) {
-        setLocalFallbackMode(true);
-        window.dispatchEvent(new CustomEvent('nom030-db-quota-exhausted'));
-      }
-      console.warn(`[DB Fallback Mode Activated] Saving ${tableName}/${docId} fell back locally.`);
-      return obj.id;
-    } else {
-      handleFirestoreError(err, OperationType.WRITE, `${tableName}/${docId}`);
+    console.warn(`[Firestore Write Failed] Saving locally to Zustand and localStorage instead. Path: ${tableName}/${docId}. Error:`, err);
+    if (!isLocalFallbackMode) {
+      setLocalFallbackMode(true);
+      window.dispatchEvent(new CustomEvent('nom030-db-quota-exhausted'));
     }
+    return obj.id;
   }
 }
 
@@ -771,15 +757,10 @@ function createCollection<T extends { id?: any; uid?: string }>(tableName: strin
       try {
         await deleteDoc(doc(fdb, tableName, docId));
       } catch (err: any) {
-        const errMsg = err?.message || String(err);
-        if (errMsg.includes('quota') || errMsg.includes('resource-exhausted') || errMsg.includes('exhausted') || errMsg.includes('QUOTA_EXCEEDED')) {
-          if (!isLocalFallbackMode) {
-            setLocalFallbackMode(true);
-            window.dispatchEvent(new CustomEvent('nom030-db-quota-exhausted'));
-          }
-          console.warn('[DB Fallback] Deleting from Firestore failed. Keeping local change.');
-        } else {
-          handleFirestoreError(err, OperationType.DELETE, `${tableName}/${docId}`);
+        console.warn(`[Firestore Delete Failed] Keeping local deletion in Zustand/localStorage. Path: ${tableName}/${docId}. Error:`, err);
+        if (!isLocalFallbackMode) {
+          setLocalFallbackMode(true);
+          window.dispatchEvent(new CustomEvent('nom030-db-quota-exhausted'));
         }
       }
     },

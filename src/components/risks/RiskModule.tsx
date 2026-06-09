@@ -92,6 +92,12 @@ export function RiskModule() {
   const [analyzedRisks, setAnalyzedRisks] = useState<any[]>([]);
   const [expandedDraftIndex, setExpandedDraftIndex] = useState<number | null>(null);
 
+  const [localGeminiKey, setLocalGeminiKey] = useState(() => {
+    return typeof window !== 'undefined' ? localStorage.getItem('nom030_gemini_api_key') || '' : '';
+  });
+  const [tempApiKey, setTempApiKey] = useState("");
+  const hasApiKey = !!(localGeminiKey || (typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY));
+
   const [formData, setFormData] = useState<{
     category: 'unsafe_condition' | 'physical_agent' | 'chemical_agent' | 'biological_agent' | 'hazard' | 'regulatory_requirement';
     processName: string;
@@ -1176,12 +1182,44 @@ export function RiskModule() {
                       </div>
                     </div>
 
-                    <Button 
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-12 shadow-lg shadow-blue-200"
-                      onClick={runPhotoAnalysis}
-                    >
-                      <Sparkles className="w-4 h-4 mr-2" /> Identificar Riesgos con IA visual
-                    </Button>
+                    {!hasApiKey ? (
+                      <div className="p-4 bg-amber-50 rounded-xl border border-amber-250 space-y-3 shadow-sm w-full">
+                        <p className="text-xs text-amber-800 font-bold leading-normal">
+                          ⚠️ <strong>Clave API de Gemini requerida:</strong> Al estar en una URL de vista previa o dominio no configurado, necesitas pegar tu API Key para poder escanear la foto.
+                        </p>
+                        <div className="flex gap-2">
+                          <Input
+                            type="password"
+                            placeholder="Pega tu API Key de Gemini..."
+                            value={tempApiKey}
+                            onChange={(e) => setTempApiKey(e.target.value)}
+                            className="h-10 text-xs bg-white border-amber-300 rounded-xl"
+                          />
+                          <Button
+                            type="button"
+                            onClick={() => {
+                              if (tempApiKey.trim()) {
+                                localStorage.setItem('nom030_gemini_api_key', tempApiKey.trim());
+                                setLocalGeminiKey(tempApiKey.trim());
+                                toast.success("Clave API guardada con éxito.");
+                              } else {
+                                toast.error("Ingresa una clave válida.");
+                              }
+                            }}
+                            className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-4 rounded-xl"
+                          >
+                            Guardar
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <Button 
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-12 shadow-lg shadow-blue-200"
+                        onClick={runPhotoAnalysis}
+                      >
+                        <Sparkles className="w-4 h-4 mr-2" /> Identificar Riesgos con IA visual
+                      </Button>
+                    )}
                   </div>
                 </div>
               ) : (
