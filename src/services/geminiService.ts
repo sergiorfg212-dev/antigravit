@@ -11,7 +11,7 @@ export enum Type {
 }
 
 async function fetchDirectGemini(modelName: string, contents: any, config: any, apiKey: string): Promise<string> {
-  const modelsToTry = [modelName, "gemini-2.0-flash", "gemini-1.5-flash"];
+  const modelsToTry = [modelName, "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
   const uniqueModels = Array.from(new Set(modelsToTry.filter(Boolean)));
   const versionsToTry = ["v1", "v1beta"];
   
@@ -96,6 +96,18 @@ async function fetchDirectGemini(modelName: string, contents: any, config: any, 
         return text;
       } catch (err: any) {
         console.warn(`Failed direct Gemini fetch with model ${m} on ${ver}: ${err.message || err}`);
+        const msg = (err.message || String(err)).toLowerCase();
+        if (
+          msg.includes("quota") ||
+          msg.includes("exhausted") ||
+          msg.includes("limit") ||
+          msg.includes("exceeded") ||
+          msg.includes("key not valid") ||
+          msg.includes("invalid key") ||
+          msg.includes("billing")
+        ) {
+          throw err;
+        }
         lastError = err;
       }
     }
