@@ -13,88 +13,91 @@ export enum Type {
 async function fetchDirectGemini(modelName: string, contents: any, config: any, apiKey: string): Promise<string> {
   const modelsToTry = [modelName, "gemini-2.0-flash", "gemini-1.5-flash"];
   const uniqueModels = Array.from(new Set(modelsToTry.filter(Boolean)));
+  const versionsToTry = ["v1", "v1beta"];
   
   let lastError: any = null;
   
   for (const m of uniqueModels) {
-    try {
-      let formattedContents = contents;
-      if (typeof contents === "string") {
-        formattedContents = [
-          {
-            role: "user",
-            parts: [
-              {
-                text: contents
-              }
-            ]
-          }
-        ];
-      } else if (!Array.isArray(contents) && contents && typeof contents === "object") {
-        if (contents.parts) {
-          formattedContents = [contents];
-        } else {
+    for (const ver of versionsToTry) {
+      try {
+        let formattedContents = contents;
+        if (typeof contents === "string") {
           formattedContents = [
             {
               role: "user",
               parts: [
                 {
-                  text: JSON.stringify(contents)
+                  text: contents
                 }
               ]
             }
           ];
-        }
-      }
-      
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${apiKey}`;
-      
-      const bodyPayload: any = {
-        contents: formattedContents
-      };
-      
-      if (config) {
-        bodyPayload.generationConfig = {
-          responseMimeType: config.responseMimeType,
-          responseSchema: config.responseSchema,
-          temperature: config.temperature,
-          candidateCount: config.candidateCount,
-          maxOutputTokens: config.maxOutputTokens,
-          stopSequences: config.stopSequences
-        };
-      }
-      
-      const res = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(bodyPayload)
-      });
-      
-      if (!res.ok) {
-        const errorText = await res.text();
-        let cleanMsg = `HTTP Error ${res.status}`;
-        try {
-          const parsed = JSON.parse(errorText);
-          if (parsed.error?.message) {
-            cleanMsg = parsed.error.message;
+        } else if (!Array.isArray(contents) && contents && typeof contents === "object") {
+          if (contents.parts) {
+            formattedContents = [contents];
+          } else {
+            formattedContents = [
+              {
+                role: "user",
+                parts: [
+                  {
+                    text: JSON.stringify(contents)
+                  }
+                ]
+              }
+            ];
           }
-        } catch (e) {
-          cleanMsg = errorText || cleanMsg;
         }
-        throw new Error(cleanMsg);
+        
+        const url = `https://generativelanguage.googleapis.com/${ver}/models/${m}:generateContent?key=${apiKey}`;
+        
+        const bodyPayload: any = {
+          contents: formattedContents
+        };
+        
+        if (config) {
+          bodyPayload.generationConfig = {
+            responseMimeType: config.responseMimeType,
+            responseSchema: config.responseSchema,
+            temperature: config.temperature,
+            candidateCount: config.candidateCount,
+            maxOutputTokens: config.maxOutputTokens,
+            stopSequences: config.stopSequences
+          };
+        }
+        
+        const res = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(bodyPayload)
+        });
+        
+        if (!res.ok) {
+          const errorText = await res.text();
+          let cleanMsg = `HTTP Error ${res.status}`;
+          try {
+            const parsed = JSON.parse(errorText);
+            if (parsed.error?.message) {
+              cleanMsg = parsed.error.message;
+            }
+          } catch (e) {
+            cleanMsg = errorText || cleanMsg;
+          }
+          throw new Error(cleanMsg);
+        }
+        
+        const data = await res.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text === undefined) {
+          throw new Error("La respuesta de la IA no contiene texto.");
+        }
+        return text;
+      } catch (err: any) {
+        console.warn(`Failed direct Gemini fetch with model ${m} on ${ver}: ${err.message || err}`);
+        lastError = err;
       }
-      
-      const data = await res.json();
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (text === undefined) {
-        throw new Error("La respuesta de la IA no contiene texto.");
-      }
-      return text;
-    } catch (err: any) {
-      console.warn(`Failed direct Gemini fetch with model ${m}: ${err.message || err}`);
-      lastError = err;
     }
   }
   
