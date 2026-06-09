@@ -170,6 +170,13 @@ export function ProcessModule() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Límite de tamaño: 4MB
+    const MAX_SIZE_MB = 4;
+    if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+      toast.error(`El archivo es demasiado grande (máximo ${MAX_SIZE_MB}MB). Por favor, suba un archivo más pequeño.`);
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = async () => {
       const base64 = reader.result as string;
@@ -219,9 +226,14 @@ export function ProcessModule() {
 
         toast.success("¡Análisis completado! Se han extraído las materias primas, maquinaria y equipos, y se ha generado su diagrama de flujo.", { id: toastId });
         setProcessType('diagram');
-      } catch (err) {
+      } catch (err: any) {
         console.error("Error analyzing process file:", err);
-        toast.error("Error al procesar el archivo con IA, guardando de forma segura.", { id: toastId });
+        const errMsg = err.message || String(err);
+        let userFriendlyMsg = "Error al procesar el archivo con IA, guardando de forma segura.";
+        if (errMsg.includes("expirado") || errMsg.includes("timeout") || errMsg.includes("límite")) {
+          userFriendlyMsg = "La solicitud de IA ha expirado. El archivo puede ser demasiado complejo o grande. Se guardó sin análisis.";
+        }
+        toast.error(userFriendlyMsg, { id: toastId });
         await handleSave({ processFileUrl: base64 });
       } finally {
         setIsAnalyzingFile(false);
