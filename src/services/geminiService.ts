@@ -11,10 +11,9 @@ export enum Type {
 }
 
 async function fetchDirectGemini(modelName: string, contents: any, config: any, apiKey: string): Promise<string> {
-  // Filtrar modelos ficticios o redundantes para evitar reintentos fallidos lentos
-  const modelsToTry = [modelName, "gemini-2.0-flash", "gemini-1.5-flash"]
-    .filter(m => m && m !== "gemini-3.5-flash" && m !== "gemini-2.5-flash");
-  const uniqueModels = Array.from(new Set(modelsToTry));
+  // Priorizar Gemini 2.5 Flash como modelo estable y Gemini 2.0 Flash como respaldo secundario
+  const modelsToTry = [modelName, "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+  const uniqueModels = Array.from(new Set(modelsToTry.filter(Boolean)));
   const versionsToTry = ["v1beta", "v1"];
   
   let lastError: any = null;
@@ -108,13 +107,9 @@ async function fetchDirectGemini(modelName: string, contents: any, config: any, 
           throw new Error("La solicitud de IA ha expirado (límite de 60 segundos). Revise su conexión a internet o intente de nuevo.");
         }
         if (
-          msg.includes("quota") ||
-          msg.includes("exhausted") ||
-          msg.includes("limit") ||
-          msg.includes("exceeded") ||
           msg.includes("key not valid") ||
           msg.includes("invalid key") ||
-          msg.includes("billing")
+          msg.includes("api key not valid")
         ) {
           throw err;
         }
@@ -225,7 +220,7 @@ export async function generateHealthPromotionProgram(
   findings: Finding[],
   hazards: SurroundingHazard[]
 ): Promise<AIRootResponse> {
-  const model = "gemini-2.0-flash";
+  const model = "gemini-2.5-flash";
   
   const prompt = `
     Como experto en Seguridad y Salud en el Trabajo bajo la normativa mexicana (NOM-030-STPS-2009), genera un programa de "Promoción de la Salud" (Sección 7.1.b) para la siguiente empresa:
@@ -319,7 +314,7 @@ export async function generateEmergencyProgram(
   findings: Finding[],
   hazards: SurroundingHazard[]
 ): Promise<AIRootResponse> {
-  const model = "gemini-2.0-flash";
+  const model = "gemini-2.5-flash";
   
   const prompt = `
     Como experto en Seguridad y Salud en el Trabajo bajo la normativa mexicana (NOM-030-STPS-2009 y Ley General de Protección Civil), genera un programa para la "Atención de Emergencias y Contingencias Sanitarias" (Sección 7.1.c) para la siguiente empresa:
@@ -405,7 +400,7 @@ export async function generateEmergencyProgram(
 }
 
 export async function generateSurroundingHazardsAnalysis(company: Company): Promise<string> {
-  const model = "gemini-2.0-flash";
+  const model = "gemini-2.5-flash";
   
   const prompt = `
     Como experto en Gestión de Riesgos y Protección Civil en México, analiza los peligros potenciales en el entorno de la siguiente ubicación:
@@ -432,7 +427,7 @@ export async function generateSurroundingHazardsAnalysis(company: Company): Prom
 }
 
 export async function generateAccessibilityAnalysis(company: Company): Promise<string> {
-  const model = "gemini-2.0-flash";
+  const model = "gemini-2.5-flash";
   
   const prompt = `
     Como consultor en Seguridad Industrial, redacta una descripción detallada de la accesibilidad y referencias de ubicación para el siguiente inmueble:
@@ -458,7 +453,7 @@ export async function generateAccessibilityAnalysis(company: Company): Promise<s
 }
 
 export async function generateLegalNormsSuggestions(company: Company): Promise<Array<{ authority: string, nomCode: string, requirement: string }>> {
-  const model = "gemini-2.0-flash";
+  const model = "gemini-2.5-flash";
   
   const prompt = `
     Como experto en Normativa Laboral y Seguridad Industrial en México, sugiere una lista de Normas Oficiales Mexicanas (NOM-STPS), estándares internacionales (ISO, OSHA) y leyes federales aplicables a la siguiente empresa:
@@ -502,7 +497,7 @@ export async function analyzeSTPSQuestionnaire(
   company: Company, 
   answers: Record<string, boolean>
 ): Promise<Array<{ authority: string, nomCode: string, requirement: string }>> {
-  const model = "gemini-2.0-flash";
+  const model = "gemini-2.5-flash";
   
   const prompt = `
     Como experto en Normativa Laboral y Seguridad Industrial en México (STPS), analiza las respuestas al cuestionario de autogestión y sugiere la matriz legal aplicable.
@@ -550,7 +545,7 @@ export async function analyzeSTPSQuestionnaire(
 }
 
 export async function explainLegalNorm(normCode: string, requirement: string, businessLine?: string): Promise<string> {
-  const model = "gemini-2.0-flash";
+  const model = "gemini-2.5-flash";
   const prompt = `Como experto en Seguridad Industrial, explica de forma breve y clara la aplicación de la norma ${normCode} (${requirement})${businessLine ? ` para una empresa de giro ${businessLine}` : ''}. 
   Indica qué debe hacer la empresa para cumplirla puntualmente. Responde en 2-3 viñetas concisas. Texto plano sin markdown complejo.`;
   
@@ -563,7 +558,7 @@ export async function explainLegalNorm(normCode: string, requirement: string, bu
 }
 
 export async function explainQuestionTechnicalTerm(questionText: string, area: string): Promise<string> {
-  const model = "gemini-2.0-flash";
+  const model = "gemini-2.5-flash";
   const prompt = `Como asesor experto en Seguridad Laboral (STPS México), explica de forma técnica pero sencilla el concepto relativo a la siguiente pregunta del diagnóstico de autogestión:
   Área: ${area}
   Pregunta: ${questionText}
@@ -580,7 +575,7 @@ export async function explainQuestionTechnicalTerm(questionText: string, area: s
 }
 
 export async function suggestSurroundingHazards(company: Company): Promise<Array<Partial<SurroundingHazard>>> {
-  const model = "gemini-2.0-flash";
+  const model = "gemini-2.5-flash";
   
   const prompt = `
     Como experto en Gestión de Riesgos y Protección Civil en México, analiza los peligros potenciales en el entorno de la siguiente ubicación para sugerir riesgos específicos:
@@ -627,7 +622,7 @@ export async function suggestSurroundingHazards(company: Company): Promise<Array
 }
 
 export async function suggestRiskAssessments(company: Company): Promise<Array<Partial<RiskAssessment & { possibleConsequence: string }>>> {
-  const model = "gemini-2.0-flash";
+  const model = "gemini-2.5-flash";
   
   const prompt = `
     Como experto en Seguridad y Salud en el Trabajo (NOM-030-STPS y NOM-002-STPS en México), analiza la siguiente empresa para sugerir riesgos internos potenciales:
@@ -674,7 +669,7 @@ export async function suggestRiskAssessments(company: Company): Promise<Array<Pa
 }
 
 export async function extractProcessAssets(processDescription: string): Promise<{ machinery: string, rawMaterials: string }> {
-  const model = "gemini-2.0-flash";
+  const model = "gemini-2.5-flash";
   
   const prompt = `
     Analiza la siguiente descripción de un proceso industrial e identifica la maquinaria/equipos y las materias primas mencionadas o implícitas.
@@ -718,7 +713,7 @@ export async function generateFinalAnalysis(
   accidents: AccidentEvent[],
   program: SafetyProgramItem[]
 ): Promise<{ conclusions: string, recommendations: string }> {
-  const model = "gemini-2.0-flash";
+  const model = "gemini-2.5-flash";
   
   const prompt = `
     Como consultor experto en Seguridad y Salud en el Trabajo (SST) y especialista en la NOM-030-STPS-2009 en México, genera un análisis final para el reporte de diagnóstico de seguridad de la siguiente empresa:
@@ -777,7 +772,7 @@ export async function generateStudioTargetAndIntroduction(
   findings: Finding[],
   hazards: SurroundingHazard[]
 ): Promise<{ target: string, introduction: string }> {
-  const model = "gemini-2.0-flash";
+  const model = "gemini-2.5-flash";
   
   const prompt = `
     Como experto consultor en Seguridad y Salud en el Trabajo bajo la normativa mexicana (NOM-030-STPS-2009), genera dos apartados para un informe técnico corporativo oficial:
@@ -854,7 +849,7 @@ export async function analyzeMaterialFromImage(
 ): Promise<{
   suggestedMaterials: Array<{ materialName: string; confidence: string; description: string }>
 }> {
-  const model = "gemini-2.0-flash";
+  const model = "gemini-2.5-flash";
   let contents: any[] = [];
 
   if (imageBase64.startsWith("data:image/")) {
@@ -939,7 +934,7 @@ export async function generateInfrastructureAnalyze(
   uploadedImage: string | null,
   answers: InfrastructureAnalyzeAnswers
 ): Promise<{ infrastructureDescription: string, identifiedAreas: Array<{ name: string, description: string }> }> {
-  const model = "gemini-2.0-flash";
+  const model = "gemini-2.5-flash";
   
   let contents: any[] = [];
   
@@ -1081,7 +1076,7 @@ export async function generateSpecificRiskAnalysis(
   activity: string,
   company: Company
 ): Promise<{ hazard: string; possibleConsequence: string; controls: string; responsible: string }> {
-  const model = "gemini-2.0-flash";
+  const model = "gemini-2.5-flash";
   
   const prompt = `
     Como experto en Seguridad y Salud en el Trabajo bajo la normativa mexicana (NOM-030-STPS-2009), genera un análisis de riesgo específico para la siguiente condición o actividad.
@@ -1149,7 +1144,7 @@ export async function analyzeProcessFile(
   description: string;
   steps: Array<{ text: string; type: "START" | "PROCESS" | "DECISION" | "INPUT" | "OUTPUT" | "END" }>;
 }> {
-  const model = "gemini-2.0-flash";
+  const model = "gemini-2.5-flash";
   let contents: any[] = [];
 
   const commaIndex = fileBase64.indexOf(",");
@@ -1274,7 +1269,7 @@ export async function analyzeRiskFromPhoto(
   imageBase64: string,
   companyContext?: string
 ): Promise<IdentifiedPhotoRisk[]> {
-  const model = "gemini-2.0-flash";
+  const model = "gemini-2.5-flash";
   let contents: any[] = [];
 
   if (imageBase64.startsWith("data:image/")) {
