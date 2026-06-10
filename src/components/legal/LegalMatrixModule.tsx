@@ -162,7 +162,11 @@ export function LegalMatrixModule() {
   };
 
   const handleAnalizarCuestionarioIA = async () => {
-    if (!currentCompanyId || !company) return;
+    console.log("[DEBUG handleAnalizarCuestionarioIA] Clicked! currentCompanyId:", currentCompanyId, "company:", company);
+    if (!currentCompanyId || !company) {
+      console.warn("[DEBUG handleAnalizarCuestionarioIA] Aborted: missing currentCompanyId or company");
+      return;
+    }
     setIsGeneratingIA(true);
     try {
       // Save answers first
@@ -206,7 +210,11 @@ export function LegalMatrixModule() {
   };
 
   const handleAyudaIA = async () => {
-    if (!currentCompanyId || !company) return;
+    console.log("[DEBUG handleAyudaIA] Clicked! currentCompanyId:", currentCompanyId, "company:", company);
+    if (!currentCompanyId || !company) {
+      console.warn("[DEBUG handleAyudaIA] Aborted: missing currentCompanyId or company");
+      return;
+    }
     setIsGeneratingIA(true);
     try {
       const suggestions = await generateLegalNormsSuggestions(company);
