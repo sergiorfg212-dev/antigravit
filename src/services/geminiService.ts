@@ -463,6 +463,7 @@ export async function generateLegalNormsSuggestions(company: Company): Promise<A
     - Riesgos detectados: ${company.riskLevel || 'No especificado'}
 
     Identifica y sugiere al menos 10 normas relevantes.
+    IMPORTANTE: Mantén la descripción del requerimiento (requirement) extremadamente corta, concisa y resumida en una sola línea (máximo 100 caracteres por norma). Evita explicaciones largas.
   `;
 
   const response = await ai.models.generateContent({
@@ -514,6 +515,7 @@ export async function analyzeSTPSQuestionnaire(
     1. Basado en las respuestas con "SÍ", identifica las Normas Oficiales Mexicanas (NOM-STPS) que se vuelven obligatorias.
     2. Considera también normas de SEMARNAT, IMSS y Protección Civil si las respuestas lo sugieren (ej. manejo de químicos implica NOM-005-STPS y LGPGIR de SEMARNAT).
     3. Si la empresa tiene más de 100 trabajadores o es de alto riesgo, asegura incluir NOM-030-STPS y NOM-019-STPS con rigor.
+    IMPORTANTE: Mantén la descripción del requerimiento (requirement) extremadamente directa, corta y resumida en una sola línea (máximo 100 caracteres), indicando muy brevemente por qué aplica.
   `;
 
   const response = await ai.models.generateContent({
@@ -547,7 +549,8 @@ export async function analyzeSTPSQuestionnaire(
 export async function explainLegalNorm(normCode: string, requirement: string, businessLine?: string): Promise<string> {
   const model = "gemini-2.5-flash";
   const prompt = `Como experto en Seguridad Industrial, explica de forma breve y clara la aplicación de la norma ${normCode} (${requirement})${businessLine ? ` para una empresa de giro ${businessLine}` : ''}. 
-  Indica qué debe hacer la empresa para cumplirla puntualmente. Responde en 2-3 viñetas concisas. Texto plano sin markdown complejo.`;
+  Indica qué debe hacer la empresa para cumplirla puntualmente. Responde en 2-3 viñetas concisas. Texto plano sin markdown complejo.
+  IMPORTANTE: Limita tu respuesta a un máximo de 200 caracteres en total. Sé extremadamente directo y resumido.`;
   
   const response = await ai.models.generateContent({
     model,
